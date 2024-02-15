@@ -14,6 +14,7 @@ pip install flask
 pip install Flask-SQLAlchemy
 pip install flask-marshmallow
 pip install marshmallow-sqlalchemy
+pip install flask-jwt-extended
 
 # Deactivate the virtual environment
 deactivate

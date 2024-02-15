@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow, Schema
 from sqlalchemy import Column, Integer, String, Float, Boolean
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token
 import os
 
 app = Flask(__name__)
@@ -10,10 +11,12 @@ app.debug = True
 # db
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "bleff.db")}'
-db = SQLAlchemy(app)
+app.config['JWT_SECRET_KEY'] = 'SECRET' # Change later...
 
-# Marshmallow
+
 ma = Marshmallow(app)
+db = SQLAlchemy(app)
+jwt = JWTManager(app)
 
 
 # Commands...
@@ -90,6 +93,25 @@ def register():
         db.session.commit()
         return message("User created!"), 201
 
+
+@app.route("/login", methods=['POST'])
+def login():
+    # Check if it's a json...
+    if request.is_json:
+        email = request.json['email']
+        password = request.json['password']
+    else:
+        email = request.form['email']
+        password = request.form['password']
+
+    user = User.query.filter_by(email=email, password=password).first()
+
+    if user:
+        access_token = create_access_token(identity=email)
+        return jsonify(message="Login succeeded!", access_token=access_token)
+    else:
+        return message("Bad email or password"), 401
+        
 
 # db.Model
 class Word(db.Model):
