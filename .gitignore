@@ -16,7 +16,7 @@ myenv/
 # Logs and databases
 *.log
 *.sqlite
-.db
+*.db
 
 # Compiled Python files
 *.pyc
