@@ -1,14 +1,18 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_marshmallow import Marshmallow, Schema
 from sqlalchemy import Column, Integer, String, Float, Boolean
 import os
 
 app = Flask(__name__)
 
+# db
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "bleff.db")}'
 db = SQLAlchemy(app)
 
+# Marshmallow
+ma = Marshmallow(app)
 
 # Commands...
 @app.cli.command('db_create')
@@ -54,8 +58,8 @@ def variable(name: str):
 @app.route("/words", methods=['GET'])
 def words():
     words_list = Word.query.all()
-    print(words_list)
-    return jsonify(data=words_list)
+    result = words_schema.dump(words_list)
+    return jsonify(result) 
 
 # db.Model
 class Word(db.Model):
@@ -72,5 +76,17 @@ class User(db.Model):
     email = Column(String)
 
 
+# Schema
+class WordSchema(Schema):
+    class Meta:
+        fields = ('word', 'meaning')
+
+class UserSchema(Schema):
+    class Meta:
+        fields = ('name', 'lastname', 'email')
+
+word_schema = WordSchema()
+words_schema = WordSchema(many=True)
+
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
