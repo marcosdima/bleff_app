@@ -5,6 +5,7 @@ from sqlalchemy import Column, Integer, String, Float, Boolean
 import os
 
 app = Flask(__name__)
+app.debug = True
 
 # db
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -13,6 +14,7 @@ db = SQLAlchemy(app)
 
 # Marshmallow
 ma = Marshmallow(app)
+
 
 # Commands...
 @app.cli.command('db_create')
@@ -33,16 +35,18 @@ def db_seed():
                     word = "Home",
                     meaning = "A place where you live."
                 )
-    userAux = User(
+    userAux = User (
                     name = "Marcos",
                     lastname = "Di Matteo",
-                    email = "marcosdimatteo@gmail.com"
+                    email = "marcosdimatteo@gmail.com",
+                    password = "1234"
                 )
     db.session.add(wordAux)
     db.session.add(userAux)
 
     db.session.commit()
     print('Database seeded!')
+
 
 # Routes...
 @app.route("/")
@@ -51,15 +55,41 @@ def hello():
 
 
 @app.route("/variable/<string:name>")
-def variable(name: str):
+def variable_hello(name: str):
     return f"Hello {name}!"
 
 
 @app.route("/words", methods=['GET'])
 def words():
     words_list = Word.query.all()
-    result = words_schema.dump(words_list)
-    return jsonify(result) 
+    return jsonify(words_schema.dump(words_list)) 
+
+
+@app.route("/users", methods=['GET'])
+def users():
+    users_list = User.query.all()
+    return jsonify(users_schema.dump(users_list))
+
+
+@app.route("/register", methods=['POST'])
+def register():
+    email = request.form['email']
+    exists = User.query.filter_by(email=email).first()
+
+    # Check if already exists an user with that mail...
+    if exists:
+        return message("That mail already exists."), 409
+    else:
+        user = User (
+                    email = request.form['email'],
+                    name = request.form['name'],
+                    lastname = request.form['lastname'],
+                    password = request.form['password']
+                )
+        db.session.add(user)
+        db.session.commit()
+        return message("User created!"), 201
+
 
 # db.Model
 class Word(db.Model):
@@ -74,6 +104,7 @@ class User(db.Model):
     name = Column(String)
     lastname = Column(String)
     email = Column(String)
+    password = Column(String)
 
 
 # Schema
@@ -81,12 +112,23 @@ class WordSchema(Schema):
     class Meta:
         fields = ('word', 'meaning')
 
+
 class UserSchema(Schema):
     class Meta:
         fields = ('name', 'lastname', 'email')
 
+
 word_schema = WordSchema()
 words_schema = WordSchema(many=True)
 
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+
+
+# Functions...
+def message(msg: str):
+    return jsonify(message=msg)
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
