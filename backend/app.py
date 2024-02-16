@@ -187,22 +187,30 @@ def get_in_game():
 @jwt_required()
 def start_game():
     id_game = int(request.form['id_game'])
-    hands = Hand.query.filter_by(Hand.id_game==id_game).count()
+    hands = Hand.query.filter(Hand.id_game==id_game).count()
 
     word = request.form['word'].upper()
-    if Word.query.filter_by(Word.word==word) == None:
+    if Word.query.filter(Word.word==word) == None:
         return message("That word doesn't exists in the database..."), 404
+    
+    usersInGame = N_users_in_game(id_game)
 
     # If there are at least 3 players in game and has no hands (The game didn't start)
-    if (N_users_in_game(id_game) > 3 and hands == 0):
+    if (usersInGame > 2 and hands == 0):
         hand = Hand(
             id_word = word,
             id_leader = get_next_leader(id_game),
-            id_game = Column(Integer, ForeignKey('game.id_game'), nullable=False),
-            started_at = Column(DateTime, nullable=True),
-            finished = Column(Boolean, default=False)
+            id_game = id_game
         )
+        db.session.add(hand)
+        db.session.commit()
+        return message("Game Started!"), 202
+    elif hands > 0:
+        return message(f"The game already started and has {hands} hands..."), 403
+    else:
+        return message(f"You need {3 - usersInGame} more users..."), 403
 
+# Create hands, to keep playing
 
 @app.route("/try/add", methods=['POST'])
 @jwt_required()
