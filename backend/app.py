@@ -163,8 +163,17 @@ def create_game():
 @jwt_required()
 def get_in_game():
     user = get_user(get_jwt_identity())
-    return message(user_in_N_games(user.id))
+    if user_in_N_games(user) > 0:
+        return message("You're already playing a game..."), 401
+    
+    db.session.add(Plays(
+            id_user=user.id, 
+            id_game=int(request.form['id_game'])
+        )
+    )
+    db.session.commit()
 
+    return message('Player added!'), 201
 
 
 def create_hand():
@@ -299,6 +308,12 @@ def message(msg: str):
 def get_user(email: str):
     return User.query.filter_by(email=email).first()
 
+
+def get_user_game(user: User):
+    return db.query(Game).join(Plays).filter(
+        Game.finished == False,
+        Plays.id_user == user.id
+    ).first()
 
 if __name__ == "__main__":
     app.run()
