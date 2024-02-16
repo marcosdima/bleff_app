@@ -132,6 +132,11 @@ def login():
         return message("Bad email or password"), 401
 
 
+@app.route("/test")
+def test():
+    return message(get_next_leader(id_game=1))
+
+
 # Game logic...
 @app.route("/game/create", methods=['POST'])
 @jwt_required()
@@ -166,9 +171,11 @@ def get_in_game():
     if user_in_N_games(user) > 0:
         return message("You're already playing a game..."), 401
     
+    id_game = int(request.form['id_game'])
+
     db.session.add(Plays(
             id_user=user.id, 
-            id_game=int(request.form['id_game'])
+            id_game=id_game
         )
     )
     db.session.commit()
@@ -176,8 +183,25 @@ def get_in_game():
     return message('Player added!'), 201
 
 
-def create_hand():
-    print('TODO')
+@app.route("/game/start", methods=['POST'])
+@jwt_required()
+def start_game():
+    id_game = int(request.form['id_game'])
+    hands = Hand.query.filter_by(Hand.id_game==id_game).count()
+
+    word = request.form['word'].upper()
+    if Word.query.filter_by(Word.word==word) == None:
+        return message("That word doesn't exists in the database..."), 404
+
+    # If there are at least 3 players in game and has no hands (The game didn't start)
+    if (N_users_in_game(id_game) > 3 and hands == 0):
+        hand = Hand(
+            id_word = word,
+            id_leader = get_next_leader(id_game),
+            id_game = Column(Integer, ForeignKey('game.id_game'), nullable=False),
+            started_at = Column(DateTime, nullable=True),
+            finished = Column(Boolean, default=False)
+        )
 
 
 @app.route("/try/add", methods=['POST'])
@@ -298,7 +322,36 @@ def user_in_N_games(user: User):
             Game.finished == False,
             Plays.id_user == user.id
         ).count()
+
+
+def user_was_N_times_leader(id_user: int, id_game: int):
+    return User.query.join(Plays).join(Game).join(Hand).filter(
+                Game.id_game == id_game,
+                Hand.id_leader==id_user
+            ).count()
+
+
+def N_users_in_game(id_game: int):
+    return db.session.query(Plays).filter(
+                Plays.id_game == id_game
+            ).count()
     
+
+def get_next_leader(id_game: int):
+    users = User.query.join(Plays).join(Game).filter_by(id_game=id_game)
+
+    minTimesLeader = user_was_N_times_leader(id_user=users[0].id, id_game=id_game)
+    id_user = id_user=users[0].id
+
+    for user in users:
+        userWasNTimesLeader = user_was_N_times_leader(id_user=user.id, id_game=id_game)
+
+        if (userWasNTimesLeader < minTimesLeader):
+            id_user=user.id
+            minTimesLeader = userWasNTimesLeader
+
+    return id_user
+
 
 # Functions...
 def message(msg: str):
@@ -314,6 +367,7 @@ def get_user_game(user: User):
         Game.finished == False,
         Plays.id_user == user.id
     ).first()
+
 
 if __name__ == "__main__":
     app.run()
