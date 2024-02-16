@@ -35,7 +35,7 @@ def db_drop():
 @app.cli.command('db_seed')
 def db_seed():
     wordAux = Word (
-                    word = "Home",
+                    word = "HOME",
                     meaning = "A place where you live."
                 )
     userAux = User (
@@ -52,14 +52,27 @@ def db_seed():
 
 
 # Routes...
-@app.route("/")
-def hello():
-    return "Hello world!"
+@app.route("/word/add", methods=['POST'])
+@jwt_required
+def add_word():
+    # Check if it's a json...
+    if request.is_json:
+        word = request.json['word']
+        meaning = request.json['meaning']
+    else:
+        word = request.form['word']
+        meaning = request.form['meaning']
 
+    word = word.upper()
+    wordAux = Word.query.filter_by(word=word).first()
 
-@app.route("/variable/<string:name>")
-def variable_hello(name: str):
-    return f"Hello {name}!"
+    if wordAux:
+        return message(f"There is already a word '{word}' in the database..."), 401
+    else:
+        newWord = word
+        db.session.add(Word(word=newWord, meaning=meaning))
+        db.session.commit()    
+        return message(f"{word} added succesfully!"), 201
 
 
 @app.route("/words", methods=['GET'])
