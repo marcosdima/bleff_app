@@ -4,6 +4,7 @@ from flask_marshmallow import Marshmallow, Schema
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, func, ForeignKey
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 import os
+import random
 
 app = Flask(__name__)
 app.debug = True
@@ -17,6 +18,10 @@ app.config['JWT_SECRET_KEY'] = 'SECRET' # Change later...
 ma = Marshmallow(app)
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
+
+
+# Constant
+WORD_CHOICES = 5
 
 
 # Commands...
@@ -134,7 +139,7 @@ def login():
 
 @app.route("/test")
 def test():
-    return message(get_next_leader(id_game=1))
+    return jsonify(get_words(1))
 
 
 # Game logic...
@@ -209,6 +214,7 @@ def start_game():
         return message(f"The game already started and has {hands} hands..."), 403
     else:
         return message(f"You need {3 - usersInGame} more users..."), 403
+
 
 # Create hands, to keep playing
 
@@ -324,7 +330,7 @@ user_schema = UserSchema()
 users_schema = UserSchema(many=True)
 
 
-# Check if...
+# Querys...
 def user_in_N_games(user: User):
     return db.session.query(Game).join(Plays).filter(
             Game.finished == False,
@@ -359,6 +365,27 @@ def get_next_leader(id_game: int):
             minTimesLeader = userWasNTimesLeader
 
     return id_user
+
+
+def get_words(id_game: int):
+    wordsAlreadyPlayed = db.session.query(Hand.id_word).join(Game, Game.id_game == Hand.id_game).filter(Game.id_game == id_game).distinct().all()
+    totalWords = Word.query.all()
+    NPosibleWords = len(totalWords) - len(wordsAlreadyPlayed)
+
+    # Extracting IDs from query results
+    excluded_ids = [row[0] for row in wordsAlreadyPlayed]
+
+    # Filtering the words that were already used...
+    posibleWords = [row[0] for row in db.session.query(Word.word).filter(~Word.word.in_(excluded_ids)).all()]
+
+    if NPosibleWords >= WORD_CHOICES:
+        random.shuffle(posibleWords)
+        return posibleWords[0:5]
+    elif NPosibleWords > 0:
+        return posibleWords
+    else:
+        print("There is no words left...")
+        return []
 
 
 # Functions...
