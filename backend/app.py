@@ -139,7 +139,8 @@ def login():
 
 @app.route("/test")
 def test():
-    return jsonify(get_words(1))
+    
+    return jsonify(get_user_game(2))
 
 
 # Game logic...
@@ -149,7 +150,7 @@ def create_game():
     user = get_user(get_jwt_identity())
 
     # Checks of the player it's playing another game already...
-    if user_in_N_games(user) > 1:
+    if user_in_N_games(user.id) > 1:
         return message("You're already playing a game..."), 401
                        
 
@@ -173,7 +174,7 @@ def create_game():
 @jwt_required()
 def get_in_game():
     user = get_user(get_jwt_identity())
-    if user_in_N_games(user) > 0:
+    if user_in_N_games(user.id) > 0:
         return message("You're already playing a game..."), 401
     
     id_game = int(request.form['id_game'])
@@ -192,31 +193,62 @@ def get_in_game():
 @jwt_required()
 def start_game():
     id_game = int(request.form['id_game'])
-    hands = Hand.query.filter(Hand.id_game==id_game).count()
-
-    word = request.form['word'].upper()
-    if Word.query.filter(Word.word==word) == None:
-        return message("That word doesn't exists in the database..."), 404
+    user = get_user(get_jwt_identity())
     
     usersInGame = N_users_in_game(id_game)
+    handCreated = create_hand(id_game=id_game)
 
-    # If there are at least 3 players in game and has no hands (The game didn't start)
-    if (usersInGame > 2 and hands == 0):
-        hand = Hand(
-            id_word = word,
-            id_leader = get_next_leader(id_game),
-            id_game = id_game
-        )
-        db.session.add(hand)
-        db.session.commit()
-        return message("Game Started!"), 202
-    elif hands > 0:
-        return message(f"The game already started and has {hands} hands..."), 403
+    # If there are at least 3 players in game and can create a hand (There is no hand unfinished)
+    if (usersInGame > 2 and handCreated):
+        leader = db.session.query(Hand.id_leader).filter(Hand.finished==False, Hand.id_game==id_game).first()
+        if user.id == leader:
+            return get_words(id_game=id_game), 202
+        else:
+            return 200 # If you get a 200 when you hit this route, then the frontend should show the try insert window...
+        
+    elif (not handCreated):
+        return message("There is a hand unfinished..."), 403
     else:
         return message(f"You need {3 - usersInGame} more users..."), 403
 
 
-# Create hands, to keep playing
+def create_hand(id_game: int):
+    created = False
+
+    hands = Hand.query.filter(Hand.id_game==id_game, Hand.finished==False)
+
+    # There is a hand unfinished...
+    if hands:
+        return created
+
+    hand = Hand(
+            id_leader = get_next_leader(id_game),
+            id_game = id_game
+        )
+    db.session.add(hand)
+    db.session.commit()
+
+    created = True
+
+    return created
+
+
+@app.route("/hand")
+@jwt_required()
+def get_hand():
+    user = get_user(get_jwt_identity())
+    id_game = get_user_game(user.id)
+    hand = get_hand(id_game=id_game)
+    if id_game and hand:
+        return jsonify(hand_schema.dump(hand)), 200
+    elif id_game:
+        return message("The game doesn't start yet..."), 403
+    else:
+        return message("This user aren't playing..."), 404
+
+
+
+
 
 @app.route("/try/add", methods=['POST'])
 @jwt_required()
@@ -227,6 +259,9 @@ def add_try():
         Game.finished == False
     ).first()
     actualHand = Hand.query.filter_by(finished=False, id_game=actualGame.id_game).first()
+
+    if actualHand and not actualHand.id_word:
+        return message("The word wasn't assigned yet..."), 404
 
     if actualGame and actualHand:
         tryAux = Try (
@@ -239,6 +274,19 @@ def add_try():
         return message('Try added succesfully!'), 201
     else:
         return message('There is no game or hand to add a try...'), 404
+
+
+@app.route("/try/vote", methods=['POST'])
+@jwt_required()
+def vote_try():
+    user = get_user(get_jwt_identity())
+    id_try = int(request.form['try'])
+    vote = Vote(
+        id_user=user.id,
+        id_try=id_try
+    )
+    db.session.add(vote)
+    db.session.commit()
 
 
 # Database Models
@@ -277,7 +325,7 @@ class Game(db.Model):
 class Hand(db.Model):
     __tablename__ = 'hand'
     id_hand = Column(Integer, primary_key=True)
-    id_word = Column(String, ForeignKey('word.word'), nullable=False)
+    id_word = Column(String, ForeignKey('word.word'), nullable=True)
     id_leader = Column(Integer, ForeignKey('user.id'), nullable=False)
     id_game = Column(Integer, ForeignKey('game.id_game'), nullable=False)
     started_at = Column(DateTime, nullable=True)
@@ -323,6 +371,11 @@ class UserSchema(Schema):
         fields = ('name', 'lastname', 'email')
 
 
+class HandSchema(Schema):
+    class Meta:
+        fields = ('id_word', 'id_leader', 'started_at', 'finished')
+
+
 word_schema = WordSchema()
 words_schema = WordSchema(many=True)
 
@@ -330,28 +383,39 @@ user_schema = UserSchema()
 users_schema = UserSchema(many=True)
 
 
+hand_schema = HandSchema()
+
+
 # Querys...
-def user_in_N_games(user: User):
+def user_in_N_games(id_user: int) -> int:
     return db.session.query(Game).join(Plays).filter(
             Game.finished == False,
-            Plays.id_user == user.id
+            Plays.id_user == id_user
         ).count()
 
 
-def user_was_N_times_leader(id_user: int, id_game: int):
+def user_was_N_times_leader(id_user: int, id_game: int) -> int:
     return User.query.join(Plays).join(Game).join(Hand).filter(
                 Game.id_game == id_game,
                 Hand.id_leader==id_user
             ).count()
 
 
-def N_users_in_game(id_game: int):
+def N_users_in_game(id_game: int) -> int:
     return db.session.query(Plays).filter(
                 Plays.id_game == id_game
             ).count()
-    
 
-def get_next_leader(id_game: int):
+
+def get_user_game(id_user: int) -> int:
+    return db.session.query(Plays.id_game).join(Game).filter(
+        Plays.id_game == Game.id_game,
+        id_user == Plays.id_user,
+        Game.finished == False
+    ).scalar()
+
+
+def get_next_leader(id_game: int) -> int:
     users = User.query.join(Plays).join(Game).filter_by(id_game=id_game)
 
     minTimesLeader = user_was_N_times_leader(id_user=users[0].id, id_game=id_game)
@@ -367,7 +431,14 @@ def get_next_leader(id_game: int):
     return id_user
 
 
-def get_words(id_game: int):
+def get_hand(id_game: int) -> Hand:
+    return Hand.query.filter(
+        Hand.id_game == id_game,
+        Hand.finished == False
+    ).first()
+
+
+def get_words(id_game: int) -> list:
     wordsAlreadyPlayed = db.session.query(Hand.id_word).join(Game, Game.id_game == Hand.id_game).filter(Game.id_game == id_game).distinct().all()
     totalWords = Word.query.all()
     NPosibleWords = len(totalWords) - len(wordsAlreadyPlayed)
@@ -388,20 +459,13 @@ def get_words(id_game: int):
         return []
 
 
-# Functions...
-def message(msg: str):
-    return jsonify(message=msg)
-
-
-def get_user(email: str):
+def get_user(email: str) -> User:
     return User.query.filter_by(email=email).first()
 
 
-def get_user_game(user: User):
-    return db.query(Game).join(Plays).filter(
-        Game.finished == False,
-        Plays.id_user == user.id
-    ).first()
+# Functions...
+def message(msg: str):
+    return jsonify(message=msg)
 
 
 if __name__ == "__main__":
