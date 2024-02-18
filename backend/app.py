@@ -194,7 +194,7 @@ def get_in_game():
 def start_game():
     id_game = int(request.form['id_game'])
     user = get_user(get_jwt_identity())
-    
+
     usersInGame = N_users_in_game(id_game)
     handCreated = create_hand(id_game=id_game)
 
@@ -247,7 +247,27 @@ def get_hand():
         return message("This user aren't playing..."), 404
 
 
+@app.route("/hand/start")
+@jwt_required()
+def start_hand():
+    user = get_user(get_jwt_identity())
+    id_game = get_user_game(user.id)
+    hand = get_hand(id_game=id_game)
+    word = request.form['word'].upper()
 
+    isAValidWord = Word.query.filter_by(word=word).first()
+
+    if hand and user.id == hand.id_leader and isAValidWord:
+        hand.started_at = func.now()
+        hand.id_word = word
+        db.session.commit()
+        return message('Hand started succesfully!'), 200
+    elif not isAValidWord:
+        return message(f"The word '{word}' doesn't exists in our database..."), 404
+    elif not hand:
+        return message("The game doesn't start yet..."), 403
+    else:
+        return message("You're not the leader of this hand..."), 403
 
 
 @app.route("/try/add", methods=['POST'])
