@@ -22,6 +22,7 @@ jwt = JWTManager(app)
 
 # Constant
 WORD_CHOICES = 5
+MIN_PLAYERS = 2
 
 
 # Commands...
@@ -50,13 +51,8 @@ def db_seed():
         password = "1234"
     )
 
-    game1 = Game()
-    game2 = Game()
-    
     db.session.add(wordAux)
     db.session.add(userAux)
-    db.session.add(game1)
-    db.session.add(game2)
 
     db.session.commit()
     print('Database seeded!')
@@ -192,30 +188,34 @@ def get_in_game():
 @app.route("/game/start", methods=['POST'])
 @jwt_required()
 def start_game():
-    id_game = int(request.form['id_game'])
     user = get_user(get_jwt_identity())
+
+    id_game = get_user_game(user.id)
+
+    if not id_game:
+        return message("You're not in a game..."), 404
 
     usersInGame = N_users_in_game(id_game)
     handCreated = create_hand(id_game=id_game)
 
     # If there are at least 3 players in game and can create a hand (There is no hand unfinished)
-    if (usersInGame > 2 and handCreated):
-        leader = db.session.query(Hand.id_leader).filter(Hand.finished==False, Hand.id_game==id_game).first()
+    if (usersInGame >= MIN_PLAYERS and handCreated):
+        leader = db.session.query(Hand.id_leader).filter(Hand.finished==False, Hand.id_game==id_game).scalar()
+
         if user.id == leader:
             return get_words(id_game=id_game), 202
         else:
-            return 200 # If you get a 200 when you hit this route, then the frontend should show the try insert window...
-        
-    elif (not handCreated):
-        return message("There is a hand unfinished..."), 403
+            return message("Game started!"), 200 # If you get a 200 when you hit this route, then the frontend should show the try insert window...
+    elif (usersInGame < MIN_PLAYERS):
+        return message(f"You need {MIN_PLAYERS - usersInGame} more users..."), 403
     else:
-        return message(f"You need {3 - usersInGame} more users..."), 403
+        return message("There is a hand unfinished..."), 403
 
 
 def create_hand(id_game: int):
     created = False
 
-    hands = Hand.query.filter(Hand.id_game==id_game, Hand.finished==False)
+    hands = Hand.query.filter(Hand.id_game==id_game, Hand.finished==False).first()
 
     # There is a hand unfinished...
     if hands:
@@ -247,7 +247,7 @@ def get_hand():
         return message("This user aren't playing..."), 404
 
 
-@app.route("/hand/start")
+@app.route("/hand/start", methods=['POST'])
 @jwt_required()
 def start_hand():
     user = get_user(get_jwt_identity())
@@ -256,6 +256,8 @@ def start_hand():
     word = request.form['word'].upper()
 
     isAValidWord = Word.query.filter_by(word=word).first()
+
+    #TODO It should create the try that represents the right answer.
 
     if hand and user.id == hand.id_leader and isAValidWord:
         hand.started_at = func.now()
@@ -460,15 +462,15 @@ def get_hand(id_game: int) -> Hand:
 
 def get_words(id_game: int) -> list:
     wordsAlreadyPlayed = db.session.query(Hand.id_word).join(Game, Game.id_game == Hand.id_game).filter(Game.id_game == id_game).distinct().all()
-    totalWords = Word.query.all()
+    totalWords = db.session.query(Word.word).all()
     NPosibleWords = len(totalWords) - len(wordsAlreadyPlayed)
-
+    
     # Extracting IDs from query results
     excluded_ids = [row[0] for row in wordsAlreadyPlayed]
 
     # Filtering the words that were already used...
-    posibleWords = [row[0] for row in db.session.query(Word.word).filter(~Word.word.in_(excluded_ids)).all()]
-
+    posibleWords = [row[0] for row in totalWords if row[0] not in excluded_ids]
+    
     if NPosibleWords >= WORD_CHOICES:
         random.shuffle(posibleWords)
         return posibleWords[0:5]
