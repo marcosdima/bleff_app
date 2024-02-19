@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow, Schema
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, func, ForeignKey
+from sqlalchemy.orm import validates
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 import os
 import random
@@ -135,8 +136,14 @@ def login():
 
 @app.route("/test")
 def test():
-    
-    return jsonify(get_user_game(2))
+    new_try = Try(id_hand=2, writer=2, content='Contenido del intento', is_right=False, is_the_original=False)
+
+    # Agregar el nuevo registro a la sesión
+    db.session.add(new_try)
+
+    # Confirmar la transacción para insertar el nuevo registro en la base de datos
+    db.session.commit()
+    return jsonify("Test!")
 
 
 # Game logic...
@@ -368,6 +375,26 @@ class Try(db.Model):
     __table_args__ = (
         db.UniqueConstraint('id_hand', 'writer', name='unique_hand_writer'),
     )
+
+
+    @validates('id_hand')
+    def hand_not_finished(self, key, id_hand):
+        ''' Checks if the id_hand it's from a finished hand. '''
+        hand = Hand.query.filter_by(id_hand=id_hand).first()
+
+        if hand.finished:
+            raise ValueError("The hand is finished, you can't add trys anymore.")
+        return id_hand
+
+
+    @validates('writer')
+    def writer_in_game(self, key, writer):
+        ''' Checks if the player is playing the hand(id_hand) game. '''
+        user_id_game = get_user_game(writer)
+        hand = Hand.query.filter_by(id_hand=self.id_hand).first()
+        if user_id_game != hand.id_game:
+            raise ValueError("You aren't playing this hand!")
+        return writer
 
 
 class Vote(db.Model):
