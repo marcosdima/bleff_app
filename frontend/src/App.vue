@@ -1,8 +1,8 @@
 <template>
   <nav>
     <router-link to="/">Home</router-link> |
-    <router-link to="/login">LogIn</router-link> |
-    <router-link to="/login">LogIn</router-link>
+    <router-link to="/login">Log In</router-link> |
+    <router-link to="/register">Register</router-link>
   </nav>
   <router-view />
 </template>
