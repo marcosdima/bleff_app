@@ -33,33 +33,36 @@ export default {
   methods: {
     async check_data(inputsData) {
       // Check empty inputs...
-      if (!inputsData.email || inputsData.email == "") {
-        this.error = "The field Email must not be empty";
-        return;
-      } else if (!inputsData.password || inputsData.password == "") {
-        this.error = "The field Password must not be empty";
-        return;
+      this.error = this.check_json(inputsData);
+      if (this.error != "") return;
+
+      // Send the data...
+      const data = {
+        email: inputsData.email,
+        password: inputsData.password,
+      };
+
+      const json = await fetch("api/login", {
+        method: "POST",
+        body: new URLSearchParams(data),
+      }).then((response) => response.json());
+
+      // If the token was received...
+      if (json.access_token) {
+        this.error = "";
+        // Save the token as a cookie...
+        document.cookie = `token=${json.access_token}; path=/; SameSite=None; Secure`;
       } else {
-        // Send the data...
-        const data = {
-          email: inputsData.email,
-          password: inputsData.password,
-        };
-
-        const json = await fetch("api/login", {
-          method: "POST",
-          body: new URLSearchParams(data),
-        }).then((response) => response.json());
-
-        // If the token was received...
-        if (json.access_token) {
-          this.error = "";
-          // Save the token as a cookie...
-          document.cookie = `token=${json.access_token}; path=/; SameSite=None; Secure`;
-        } else {
-          this.error = json?.message ?? "Error";
-        }
+        this.error = json?.message ?? "Error";
       }
+    },
+    check_json(json) {
+      for (let element in json) {
+        console.log(element);
+        if (json[element] == "")
+          return `The field ${element} must not be empty`;
+      }
+      return "";
     },
   },
 };

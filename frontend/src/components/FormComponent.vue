@@ -40,6 +40,11 @@ export default {
   data() {
     return { formData: {} };
   },
+  created() {
+    for (let field of this.fields) {
+      this.handleInput(field.name, "");
+    }
+  },
   methods: {
     handleInput(fieldName, value) {
       this.formData[fieldName] = value;
