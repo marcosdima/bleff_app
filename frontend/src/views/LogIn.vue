@@ -1,13 +1,10 @@
 <template>
-  <div class="body">
-    <input class="element" type="text" placeholder="Email" v-model="email" />
-    <input
-      class="element"
-      type="password"
-      placeholder="Password"
-      v-model="password"
-    />
-    <custom-button class="element" @click="check_data"> Log In </custom-button>
+  <div>
+    <form-component
+      :buttonLabel="label"
+      :fields="loginField"
+      @onClick="check_data"
+    ></form-component>
     <transition>
       <div v-if="error != ''">
         {{ error }}
@@ -16,35 +13,37 @@
   </div>
 </template>
 <script>
-import CustomButton from "@/components/CustomButton.vue";
+import FormComponent from "@/components/FormComponent.vue";
 
 export default {
   name: "LogIn",
   components: {
-    CustomButton,
+    FormComponent,
   },
   data() {
     return {
-      email: "",
-      password: "",
-      isVisible: false,
+      loginField: [
+        { name: "email", placeHolder: "Email", type: "text" },
+        { name: "password", placeHolder: "Password", type: "password" },
+      ],
       error: "",
+      label: "Log In",
     };
   },
   methods: {
-    async check_data() {
+    async check_data(inputsData) {
       // Check empty inputs...
-      if (this.email == "") {
+      if (!inputsData.email || inputsData.email == "") {
         this.error = "The field Email must not be empty";
         return;
-      } else if (this.password == "") {
+      } else if (!inputsData.password || inputsData.password == "") {
         this.error = "The field Password must not be empty";
         return;
       } else {
         // Send the data...
         const data = {
-          email: this.email,
-          password: this.password,
+          email: inputsData.email,
+          password: inputsData.password,
         };
 
         const json = await fetch("api/login", {
@@ -56,7 +55,7 @@ export default {
         if (json.access_token) {
           this.error = "";
           // Save the token as a cookie...
-          document.cookie = `token=${json.access_token}; path=/;`;
+          document.cookie = `token=${json.access_token}; path=/; SameSite=None; Secure`;
         } else {
           this.error = json?.message ?? "Error";
         }
@@ -67,18 +66,6 @@ export default {
 </script>
 
 <style scoped>
-.body {
-  display: flex;
-  flex-direction: column;
-  margin: 100px;
-}
-
-.element {
-  margin: 10px;
-  width: 30%;
-  align-self: center;
-}
-
 .v-enter-active,
 .v-leave-active {
   transition: opacity 0.1s ease;
