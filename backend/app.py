@@ -23,7 +23,8 @@ jwt = JWTManager(app)
 
 # Constant
 WORD_CHOICES = 5
-MIN_PLAYERS = 2
+MIN_USERS = 2
+MAX_USERS = 5
 
 
 # Commands...
@@ -95,16 +96,19 @@ def users():
     return jsonify(users_schema.dump(users_list))
 
 
+@app.route("/max_users", methods=['GET'])
+def get_max_users():
+    return jsonify(max_users=MAX_USERS), 200
+
+
 @app.route("/games", methods=['GET'])
 def games_data():
     games = Game.query.filter_by(finished=False).all()
     gamesSchemas = games_schemas.dump(games)
     for game in gamesSchemas:
         game['users'] = Plays.query.filter_by(id_game=game['id_game']).count()
-        print(game)
-    return jsonify(gamesSchemas)
+    return jsonify(gamesSchemas), 200
     
-
 
 @app.route("/register", methods=['POST'])
 def register():
@@ -217,15 +221,15 @@ def start_game():
     handCreated = create_hand(id_game=id_game)
 
     # If there are at least 3 players in game and can create a hand (There is no hand unfinished)
-    if (usersInGame >= MIN_PLAYERS and handCreated):
+    if (usersInGame >= MIN_USERS and handCreated):
         leader = db.session.query(Hand.id_leader).filter(Hand.finished==False, Hand.id_game==id_game).scalar()
 
         if user.id == leader:
             return get_words(id_game=id_game), 202
         else:
             return message("Game started!"), 200 # If you get a 200 when you hit this route, then the frontend should show the try insert window...
-    elif (usersInGame < MIN_PLAYERS):
-        return message(f"You need {MIN_PLAYERS - usersInGame} more users..."), 403
+    elif (usersInGame < MIN_USERS):
+        return message(f"You need {MIN_USERS - usersInGame} more users..."), 403
     else:
         return message("There is a hand unfinished..."), 403
 
