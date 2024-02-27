@@ -61,7 +61,6 @@ export default {
   flex-wrap: wrap;
   border: solid blueviolet;
   border-radius: 10px 20px 10px 20px;
-  height: fit-content;
   background: palegoldenrod;
 }
 .container-mouse-on {

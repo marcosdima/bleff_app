@@ -1,5 +1,6 @@
 <template>
   <div class="flex-container">
+    <CustomButton :iconName="iconName" />
     <div>
       <div v-for="game in games" :key="game.id_game">
         <GameDisplayer
@@ -16,15 +17,18 @@
 
 <script>
 import GameDisplayer from "@/components/GameDisplayer.vue";
+import CustomButton from "@/components/simple/CustomButton.vue";
 export default {
   components: {
     GameDisplayer,
+    CustomButton,
   },
   data() {
     return {
       games: [],
       selected: null,
       max: 5,
+      iconName: "plus",
     };
   },
   created() {
@@ -62,15 +66,14 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
 .flex-container {
   display: flex;
   flex-direction: column;
-  align-content: center;
+  align-items: center;
   justify-content: center;
 }
-
 .game-displayer {
-  margin: 0.5%;
+  margin: 5px;
 }
 </style>
