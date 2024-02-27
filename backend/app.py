@@ -95,6 +95,17 @@ def users():
     return jsonify(users_schema.dump(users_list))
 
 
+@app.route("/games", methods=['GET'])
+def games_data():
+    games = Game.query.filter_by(finished=False).all()
+    gamesSchemas = games_schemas.dump(games)
+    for game in gamesSchemas:
+        game['users'] = Plays.query.filter_by(id_game=game['id_game']).count()
+        print(game)
+    return jsonify(gamesSchemas)
+    
+
+
 @app.route("/register", methods=['POST'])
 def register():
     email = request.form['email']
@@ -425,14 +436,20 @@ class HandSchema(Schema):
         fields = ('id_word', 'id_leader', 'started_at', 'finished')
 
 
+class GameSchema(Schema):
+    class Meta:
+        fields = ('id_game', 'started_at', 'winner')
+
+
 word_schema = WordSchema()
 words_schema = WordSchema(many=True)
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
 
-
 hand_schema = HandSchema()
+
+games_schemas = GameSchema(many=True)
 
 
 # Querys...
