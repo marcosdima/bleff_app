@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from "vue-router";
 import HomePage from "../views/HomePage.vue";
 import LogIn from "../views/LogIn.vue";
 import RegisterPage from "../views/RegisterPage.vue";
+import GameSelection from "../views/GameSelection.vue";
 
 const routes = [
   {
@@ -18,6 +19,11 @@ const routes = [
     path: "/register",
     name: "RegisterPage",
     component: RegisterPage,
+  },
+  {
+    path: "/game/selection",
+    name: "GameSelection",
+    component: GameSelection,
   },
 ];
 

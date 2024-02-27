@@ -1,13 +1,30 @@
 <template>
-  <CustomButton>Hola</CustomButton>
+  <div>
+    <GameDisplayer
+      :gameNumber="1"
+      :userConnected="2"
+      :maxUser="5"
+    ></GameDisplayer>
+    <GameDisplayer
+      :gameNumber="1"
+      :userConnected="2"
+      :maxUser="5"
+    ></GameDisplayer>
+    <GameDisplayer
+      :gameNumber="1"
+      :userConnected="2"
+      :maxUser="5"
+    ></GameDisplayer>
+  </div>
 </template>
 
 <script>
-import CustomButton from "@/components/CustomButton.vue";
+import GameDisplayer from "@/components/GameDisplayer.vue";
+
 export default {
   name: "HomePage",
   components: {
-    CustomButton,
+    GameDisplayer,
   },
 };
 </script>

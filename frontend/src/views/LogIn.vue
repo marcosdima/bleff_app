@@ -57,11 +57,9 @@ export default {
       }
     },
     check_json(json) {
-      for (let element in json) {
-        console.log(element);
+      for (let element in json)
         if (json[element] == "")
           return `The field ${element} must not be empty`;
-      }
       return "";
     },
   },
