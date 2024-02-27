@@ -1,6 +1,6 @@
 <template>
   <div class="users-connected">
-    <div v-for="index in userMax" :key="index">
+    <div v-for="index in maxUser" :key="index" id="user-con-container">
       <font-awesome-icon
         v-if="index <= userTotal"
         icon="user"
@@ -23,7 +23,7 @@ export default {
     FontAwesomeIcon,
   },
   props: {
-    userMax: {
+    maxUser: {
       type: Number,
       required: true,
     },
@@ -40,8 +40,13 @@ export default {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
 }
 .element {
   margin: 2px;
+}
+#user-con-container {
+  display: inline-flex;
 }
 </style>
