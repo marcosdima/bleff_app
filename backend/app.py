@@ -168,7 +168,7 @@ def create_game():
     user = get_user(get_jwt_identity())
 
     # Checks of the player it's playing another game already...
-    if user_in_N_games(user.id) > 1:
+    if user_in_N_games(user.id) >= 1:
         return message("You're already playing a game..."), 401
                        
 
@@ -185,7 +185,7 @@ def create_game():
 
     db.session.commit()
 
-    return message('Game created!'), 201
+    return jsonify({ 'id_game': game.id_game }), 201
     
 
 @app.route("/game/in", methods=['POST'])
@@ -211,7 +211,6 @@ def get_in_game():
 @jwt_required()
 def start_game():
     user = get_user(get_jwt_identity())
-
     id_game = get_user_game(user.id)
 
     if not id_game:
@@ -225,7 +224,7 @@ def start_game():
         leader = db.session.query(Hand.id_leader).filter(Hand.finished==False, Hand.id_game==id_game).scalar()
 
         if user.id == leader:
-            return get_words(id_game=id_game), 202
+            return jsonify(words=get_words(id_game=id_game)), 202
         else:
             return message("Game started!"), 200 # If you get a 200 when you hit this route, then the frontend should show the try insert window...
     elif (usersInGame < MIN_USERS):
@@ -261,8 +260,10 @@ def get_hand():
     user = get_user(get_jwt_identity())
     id_game = get_user_game(user.id)
     hand = get_hand(id_game=id_game)
-    if id_game and hand:
+    if id_game and hand and hand.started_at:
         return jsonify(hand_schema.dump(hand)), 200
+    elif id_game and hand:
+        return message("Waiting for the leader to select the word..."), 403
     elif id_game:
         return message("The game doesn't start yet..."), 403
     else:
