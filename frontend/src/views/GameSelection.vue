@@ -1,6 +1,6 @@
 <template>
   <div class="flex-container">
-    <CustomButton :iconName="iconName" />
+    <CustomButton :iconName="iconName" @click="createGame" />
     <div>
       <div v-for="game in games" :key="game.id_game">
         <GameDisplayer
@@ -61,12 +61,28 @@ export default {
       }).then((response) => response.json());
 
       if (data.message) this.$notify(data.message);
+      // Save the token as a cookie...
+      else document.cookie = `token=${id}; path=/; SameSite=None; Secure`;
+    },
+    async createGame() {
+      const token = this.$cookieParser("token");
+      const data = await fetch("api/game/create", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }).then((response) => response.json());
+
+      if (data.message) this.$notify(data.message);
+      else if (data.id_game)
+        document.cookie = `id_game=${data.id_game}; path=/; SameSite=None; Secure`;
     },
   },
 };
 </script>
 
-<style scoped>
+<style>
 .flex-container {
   display: flex;
   flex-direction: column;
