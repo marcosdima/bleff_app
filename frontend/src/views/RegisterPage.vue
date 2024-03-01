@@ -34,6 +34,7 @@ export default {
         email: inputsData.email,
         name: inputsData.name,
         password: inputsData.password,
+        lastname: inputsData.lastname,
       };
 
       const json = await fetch("api/register", {
