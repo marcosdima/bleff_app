@@ -3,7 +3,8 @@
     <router-link to="/">Home</router-link> |
     <router-link to="/login">Log In</router-link> |
     <router-link to="/register">Register</router-link> |
-    <router-link to="/game/selection">Games</router-link>
+    <router-link to="/game/selection">Games</router-link> |
+    <router-link to="/game/play">Play</router-link>
   </nav>
   <router-view />
 </template>

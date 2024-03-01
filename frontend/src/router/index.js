@@ -3,6 +3,7 @@ import HomePage from "../views/HomePage.vue";
 import LogIn from "../views/LogIn.vue";
 import RegisterPage from "../views/RegisterPage.vue";
 import GameSelection from "../views/GameSelection.vue";
+import GamePage from "../views/GamePage.vue";
 
 const routes = [
   {
@@ -24,6 +25,11 @@ const routes = [
     path: "/game/selection",
     name: "GameSelection",
     component: GameSelection,
+  },
+  {
+    path: "/game/play",
+    name: "GamePage",
+    component: GamePage,
   },
 ];
 
