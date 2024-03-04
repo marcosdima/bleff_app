@@ -16,8 +16,8 @@
         'MYRIAD',
         'PROCLIVITY',
       ]"
-      @get-word="print"
     ></WordSelectorVue>
+    <TryForm word="CASCO"></TryForm>
   </div>
 </template>
 
@@ -26,6 +26,7 @@ import GameDisplayer from "@/components/GameDisplayer.vue";
 import CustomButton from "@/components/simple/CustomButton.vue";
 import WordComponent from "@/components/simple/WordComponent.vue";
 import WordSelectorVue from "@/components/WordSelector.vue";
+import TryForm from "@/components/TryForm.vue";
 
 export default {
   name: "HomePage",
@@ -34,11 +35,7 @@ export default {
     CustomButton,
     WordComponent,
     WordSelectorVue,
-  },
-  methods: {
-    print(str) {
-      console.log(str);
-    },
+    TryForm,
   },
 };
 </script>
