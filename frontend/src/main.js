@@ -5,7 +5,11 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faUser, faPlus } from "@fortawesome/free-solid-svg-icons";
+import {
+  faUser,
+  faPlus,
+  faPaperPlane,
+} from "@fortawesome/free-solid-svg-icons";
 
 const cookieParser = function (field) {
   const cookies = document.cookie.split("; ").reduce((acc, cookie) => {
@@ -29,7 +33,7 @@ const notify = function notify(msg) {
   }
 };
 
-library.add(faUser, faPlus);
+library.add(faUser, faPlus, faPaperPlane);
 
 const app = createApp(App);
 app.use(router);
