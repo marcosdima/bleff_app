@@ -52,9 +52,16 @@ def db_seed():
         email = "marcosdimatteo@gmail.com",
         password = "1234"
     )
+    userAux2 = User (
+        name = "Marcos",
+        lastname = "Di Matteo",
+        email = "marcosdimatteo2@gmail.com",
+        password = "1234"
+    )
 
     db.session.add(wordAux)
     db.session.add(userAux)
+    db.session.add(userAux2)
 
     db.session.commit()
     print('Database seeded!')
@@ -82,6 +89,17 @@ def add_word():
         db.session.add(Word(word=newWord, meaning=meaning))
         db.session.commit()    
         return message(f"{word} added succesfully!"), 201
+
+
+@app.route("/word/<id_word>")
+def get_word(id_word):
+    # Check if it's a json...
+    word = Word.query.filter_by(word=id_word).first()
+
+    if word:
+        return jsonify(word_schema.dump(word)), 200
+    else:
+        return message("That word doesn't exists..."), 404
 
 
 @app.route("/words", methods=['GET'])
@@ -194,7 +212,7 @@ def get_in_game():
     user = get_user(get_jwt_identity())
     if user_in_N_games(user.id) > 0:
         return message("You're already playing a game..."), 401
-    
+
     id_game = int(request.form['id_game'])
 
     db.session.add(Plays(
@@ -204,7 +222,7 @@ def get_in_game():
     )
     db.session.commit()
 
-    return message('Player added!'), 201
+    return {}, 201
 
 
 @app.route("/game/start", methods=['POST'])
@@ -217,20 +235,19 @@ def start_game():
         return message("You're not in a game..."), 404
 
     usersInGame = N_users_in_game(id_game)
-    handCreated = create_hand(id_game=id_game)
+
+    if (usersInGame < MIN_USERS):
+        return message(f"You need {MIN_USERS - usersInGame} more users..."), 403
+
+    create_hand(id_game=id_game)
+
+    hand = db.session.query(Hand).filter(Hand.finished==False, Hand.id_game==id_game).first()
 
     # If there are at least 3 players in game and can create a hand (There is no hand unfinished)
-    if (usersInGame >= MIN_USERS and handCreated):
-        leader = db.session.query(Hand.id_leader).filter(Hand.finished==False, Hand.id_game==id_game).scalar()
-
-        if user.id == leader:
-            return jsonify(words=get_words(id_game=id_game)), 202
-        else:
-            return message("Game started!"), 200 # If you get a 200 when you hit this route, then the frontend should show the try insert window...
-    elif (usersInGame < MIN_USERS):
-        return message(f"You need {MIN_USERS - usersInGame} more users..."), 403
+    if (hand.id_leader == user.id and not hand.id_word):
+        return jsonify(words=get_words(id_game=id_game)), 202
     else:
-        return message("There is a hand unfinished..."), 403
+        return message("Just Waiting..."), 200
 
 
 def create_hand(id_game: int):
@@ -260,6 +277,7 @@ def get_hand():
     user = get_user(get_jwt_identity())
     id_game = get_user_game(user.id)
     hand = get_hand(id_game=id_game)
+
     if id_game and hand and hand.started_at:
         return jsonify(hand_schema.dump(hand)), 200
     elif id_game and hand:
