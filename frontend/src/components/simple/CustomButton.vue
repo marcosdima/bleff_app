@@ -46,8 +46,11 @@ export default {
   display: flex;
   align-content: center;
   justify-content: center;
-  border: solid blueviolet;
+  border: solid brown;
   width: 20%;
   border-radius: 10px;
+}
+.icon {
+  padding: 10px;
 }
 </style>
