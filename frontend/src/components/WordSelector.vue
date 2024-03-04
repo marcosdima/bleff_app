@@ -38,7 +38,6 @@ export default {
       this.wordsInfo = wordsData.filter((object) =>
         this.words.includes(object.word)
       );
-      console.log(this.words);
     },
   },
 };
