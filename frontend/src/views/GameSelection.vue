@@ -51,18 +51,27 @@ export default {
     },
     async handleEnterGame(id) {
       const token = this.$cookieParser("token");
+
+      const form = {
+        id_game: id,
+      };
+
       const data = await fetch("api/game/in", {
         method: "POST",
-        body: new URLSearchParams({ id_game: id }),
+        body: new URLSearchParams(form),
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
-      }).then((response) => response.json());
+      })
+        .then((response) => response.json())
+        .catch((error) => console.log(error));
 
-      if (data.message) this.$notify(data.message);
+      if (data && data.message) this.$notify(data.message);
       // Save the token as a cookie...
-      else document.cookie = `token=${id}; path=/; SameSite=None; Secure`;
+      if (data) {
+        document.cookie = `id_game=${id}; path=/; SameSite=None; Secure`;
+        this.$router.push("/game/play");
+      }
     },
     async createGame() {
       const token = this.$cookieParser("token");
@@ -75,8 +84,10 @@ export default {
       }).then((response) => response.json());
 
       if (data.message) this.$notify(data.message);
-      else if (data.id_game)
+      else if (data.id_game) {
         document.cookie = `id_game=${data.id_game}; path=/; SameSite=None; Secure`;
+        this.$router.push("/game/play");
+      }
     },
   },
 };
