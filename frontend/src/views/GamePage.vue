@@ -1,7 +1,7 @@
 <template>
   <div>
-    <div v-if="hand.id_word">
-      <TryForm :word="hand.id_word" />
+    <div v-if="showTryForm">
+      <TryForm :word="hand.id_word" @tryContent="sendTry" />
     </div>
     <div v-else-if="words.length > 0">
       <WordSelector :words="words" @get-word="wordSelected" />
@@ -27,6 +27,7 @@ export default {
       waitingTime: 3000, // Miliseconds
       waitingTimeID: null,
       words: [],
+      showTryForm: false,
       hand: {
         id_word: null,
         started_at: "",
@@ -52,6 +53,7 @@ export default {
     // Handle the first interaction...
     async fetchGameData() {
       console.log("Fetching data...");
+      let flag = false;
       const token = this.$cookieParser("token");
       const data = await fetch("api/game/start", {
         method: "POST",
@@ -59,15 +61,16 @@ export default {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-      }).then((response) => response.json());
+      }).then((response) => {
+        if (response.ok) flag = true;
+        return response.json();
+      });
 
-      if (data) {
-        this.handleGameData(data);
-      }
+      if (data && flag) this.handleGameData(data);
+      else if (data) this.notification = data.message;
     },
     handleGameData(data) {
       if (!data.words) {
-        this.notification = data.message;
         this.words = [];
         this.startWaitingTime(this.handleHandWaiting);
       } else if (data.words) {
@@ -90,10 +93,13 @@ export default {
 
         const data = await response.json();
 
-        if (data) {
+        if (data && data.id_word && data.started_at) {
           this.stopInterval();
           this.hand.id_word = data.id_word;
           this.hand.started_at = data.started_at;
+          this.showTryForm = true;
+        } else if (data) {
+          this.notification = data.message;
         }
       }
     },
@@ -112,6 +118,41 @@ export default {
           this.handleHandWaiting();
         }
       });
+    },
+    // Sen the user try...
+    async sendTry(content) {
+      const token = this.$cookieParser("token");
+
+      const data = await fetch("api/try/add", {
+        method: ["POST"],
+        body: new URLSearchParams({ content: content }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }).then((response) => {
+        if (response.ok) {
+          this.showTryForm = false;
+          // En realidad debería esperar a que el tiempo termine...
+          this.startWaitingTime(this.fetchVotes);
+        }
+        return response.json();
+      });
+
+      if (data && data.message) this.notification = data.message;
+    },
+    async fetchVotes() {
+      const token = this.$cookieParser("token");
+      console.log("Looking for trys...");
+      const data = await fetch("api/trys", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }).then((response) => response.json());
+
+      if (data) {
+        this.notification = data?.message ?? data;
+        this.stopInterval();
+      }
     },
   },
 };
