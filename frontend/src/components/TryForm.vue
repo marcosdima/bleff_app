@@ -1,8 +1,8 @@
 <template>
   <div class="try-container flex-container">
     <h1 class="word-title">The word is: {{ word }}</h1>
-    <textarea :v-model="text" :placeholder="sentence"></textarea>
-    <CustomButton iconName="paper-plane" />
+    <textarea v-model="text" :placeholder="sentence"></textarea>
+    <CustomButton iconName="paper-plane" @click="$emit('tryContent', text)" />
   </div>
 </template>
 
