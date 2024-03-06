@@ -1,11 +1,12 @@
+import os
+import random
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow, Schema
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, func, ForeignKey
 from sqlalchemy.orm import validates
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
-import os
-import random
 
 app = Flask(__name__)
 app.debug = True
@@ -25,6 +26,7 @@ jwt = JWTManager(app)
 WORD_CHOICES = 5
 MIN_USERS = 2
 MAX_USERS = 5
+MINUTES_TO_WRITE = 20
 
 
 # Commands...
@@ -326,17 +328,44 @@ def add_try():
     if actualHand and not actualHand.id_word:
         return message("The word wasn't assigned yet..."), 404
 
-    if actualGame and actualHand:
+    tryExists = Try.query.filter_by(id_hand=actualHand.id_hand, writer=user.id).first()
+    
+    if actualGame and actualHand and not tryExists:
         tryAux = Try (
-            hand_id = actualHand.id,
+            id_hand = actualHand.id_hand,
             writer = user.id,
             content = request.form['content']
         )
         db.session.add(tryAux)
         db.session.commit()
         return message('Try added succesfully!'), 201
+    elif tryExists:
+        return message('You already sended a Try...'), 200
     else:
         return message('There is no game or hand to add a try...'), 404
+
+
+@app.route("/trys")
+@jwt_required()
+def get_trys():
+    user = get_user(get_jwt_identity())
+    id_game = get_user_game(user.id)
+    hand = get_hand(id_game)
+
+    started_at = hand.started_at
+    writing_time = timedelta(minutes=MINUTES_TO_WRITE)
+
+    trys = Try.query.filter_by(id_hand=hand.id_hand).all()
+
+    # There is time to add trys...
+    if (started_at + writing_time > now() and len(trys) < N_users_in_game(id_game=id_game)):
+        timeLeft = started_at + writing_time - now()
+        return message(f"Wait until the last player send its try... or {timeLeft.seconds // 60} minutes and {timeLeft.seconds % 60} seconds"), 200
+
+    if trys:
+        return jsonify(try_schemas.dump(trys)), 200
+    else:
+        return message("No trys founded..."), 404
 
 
 @app.route("/try/vote", methods=['POST'])
@@ -464,6 +493,11 @@ class GameSchema(Schema):
         fields = ('id_game', 'started_at', 'winner')
 
 
+class TrySchema(Schema):
+    class Meta:
+        fields = ('id_try', 'content')
+
+
 word_schema = WordSchema()
 words_schema = WordSchema(many=True)
 
@@ -473,6 +507,8 @@ users_schema = UserSchema(many=True)
 hand_schema = HandSchema()
 
 games_schemas = GameSchema(many=True)
+
+try_schemas = TrySchema(many=True)
 
 
 # Querys...
@@ -555,6 +591,10 @@ def get_user(email: str) -> User:
 # Functions...
 def message(msg: str):
     return jsonify(message=msg)
+
+
+def now():
+    return datetime.utcnow()
 
 
 if __name__ == "__main__":
